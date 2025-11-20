@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Viewer: Alerts Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Alerts Dashboard</h1>
+    <div class="filters">
+      <input id="sensorId" placeholder="Sensor ID (vd: sensor-1)">
+      <input id="q" placeholder="Search by msg/rule_id">
+      <select id="priority">
+        <option value="">Priority (all)</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
+      <select id="since">
+        <option value="15">15 minutes</option>
+        <option value="60" selected>60 minutes</option>
+        <option value="1440">24 hours</option>
+        <option value="10080">7 days</option>
+      </select>
+      <button id="apply">Apply</button>
+    </div>
+  </header>
+
+  <section>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>Timestamp</th><th>Sensor</th><th>Priority</th><th>Rule ID</th>
+          <th>Message</th><th>Source</th><th>Destination</th><th>Protocol</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="pager">
+      <button id="prev">Prev</button>
+      <span id="pageinfo"></span>
+      <button id="next">Next</button>
+    </div>
+  </section>
+
+  <script>
+    let page = 1;
+    const limit = 50;
+
+    async function fetchAlerts(params) {
+      const response = await fetch(`/api/v1/alerts/recent?${params}`);
+      return await response.json();
+    }
+
+    function buildQuery() {
+      const params = new URLSearchParams();
+      params.set('page', page);
+      params.set('limit', limit);
+      params.set('sensor_id', document.getElementById('sensorId').value);
+      params.set('q', document.getElementById('q').value);
+      params.set('priority', document.getElementById('priority').value);
+      params.set('since_minutes', document.getElementById('since').value);
+      return params.toString();
+    }
+
+    function renderRows(alerts) {
+      const tbody = document.querySelector("#tbl tbody");
+      tbody.innerHTML = '';
+      alerts.forEach(alert => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${alert.ts}</td>
+          <td>${alert.sensor_id}</td>
+          <td>${alert.priority}</td>
+          <td>${alert.rule_id}</td>
+          <td>${alert.msg}</td>
+          <td>${alert.src.ip}:${alert.src.port}</td>
+          <td>${alert.dst.ip}:${alert.dst.port}</td>
+          <td>${alert.proto}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updatePageInfo(total) {
+      const maxPage = Math.ceil(total / limit);
+      document.getElementById("pageinfo").textContent = `Page ${page} of ${maxPage} (${total} alerts)`;
+      document.getElementById("prev").disabled = page <= 1;
+      document.getElementById("next").disabled = page >= maxPage;
+    }
+
+    async function loadAlerts() {
+      const query = buildQuery();
+      const data = await fetchAlerts(query);
+      renderRows(data.items);
+      updatePageInfo(data.total);
+    }
+
+    document.getElementById("apply").addEventListener("click", () => {
+      page = 1;
+      loadAlerts();
+    });
+
+    document.getElementById("prev").addEventListener("click", () => {
+      page = Math.max(1, page - 1);
+      loadAlerts();
+    });
+
+    document.getElementById("next").addEventListener("click", () => {
+      page++;
+      loadAlerts();
+    });
+
+    // Load initial alerts
+    loadAlerts();
+  </script>
+</body>
+</html>
