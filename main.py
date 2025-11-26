@@ -8,8 +8,8 @@ from fastapi import Request, Response
 from datetime import datetime, timezone
 from app.api import alerts, health, misp, rules, sensors
 app = FastAPI()
-templates = Jinja2Templates(directory="./app/templates")
-app.mount("/static", StaticFiles(directory="./app/static"), name="static")
+# templates = Jinja2Templates(directory="./app/templates")
+# app.mount("/static", StaticFiles(directory="./app/static"), name="static")
 
 app.include_router(sensors.router)
 app.include_router(rules.router)

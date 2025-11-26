@@ -20,16 +20,59 @@ def misp_stats(svc: MISPService = Depends(_svc)):
     return svc.stats()
 
 @router.get("/events")
-def list_events(limit: int = Query(50, ge=1, le=500), svc: MISPService = Depends(_svc)):
-    docs = svc.query_events({}, limit=limit)
+def list_events(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    event_id: Optional[str] = Query(None, description="Filter by event_id (exact match)"),
+    svc: MISPService = Depends(_svc)
+):
+    q = {}
+    if event_id:
+        # User wants exact match, no regex.
+        # Try to convert to int, as DB stores event_id as int.
+        try:
+            eid_int = int(event_id.strip())
+            q["event_id"] = eid_int
+        except ValueError:
+            # If input is not an integer (e.g. "abc"), it won't match any event_id (which are ints).
+            # We can return empty list immediately or let query fail.
+            # Let's force a query that returns nothing.
+            q["event_id"] = -1
+
+    total = svc.count_events(q)
+    skip = (page - 1) * page_size
+    docs = svc.query_events(q, skip=skip, limit=page_size)
     for d in docs: d.pop("_id", None)
-    return docs
+    
+    return {
+        "items": docs,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size
+    }
+
 
 @router.get("/iocs")
-def list_iocs(limit: int = Query(100, ge=1, le=1000), svc: MISPService = Depends(_svc)):
-    docs = svc.query_iocs({}, limit=limit)
+def list_iocs(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    svc: MISPService = Depends(_svc)
+):
+    q = {}
+    total = svc.count_iocs(q)
+    skip = (page - 1) * page_size
+    docs = svc.query_iocs(q, skip=skip, limit=page_size)
     for d in docs: d.pop("_id", None)
-    return docs
+    
+    return {
+        "items": docs,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size
+    }
+
 
 # Pull ngay (24h, exclude_imported=True)
 @router.post("/pull/now")

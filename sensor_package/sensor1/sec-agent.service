@@ -1,0 +1,14 @@
+[Unit]
+Description=Push Alerts Agent for Sensor
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/sensor1/push_alerts_agent.py
+Restart=always
+User=root
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

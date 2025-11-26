@@ -73,6 +73,12 @@ def schedule_for(sensor_id: str):
     }
 
 # ===== Routes =====
+@router.get("/")
+async def list_sensors():
+    """List all sensors"""
+    cursor = col.find({}, {"_id": 0})
+    return list(cursor)
+
 @router.put("/heartbeat")
 async def heartbeat(hb: Heartbeat, x_api_key: str = Header(None)):
     _check_key(hb.sensor_id, x_api_key)

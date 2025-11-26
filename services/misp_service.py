@@ -163,11 +163,17 @@ class MISPService:
             "last_event_ts": next(self.col_events.find().sort("timestamp",-1).limit(1), {}).get("timestamp")
         }
 
-    def query_events(self, q: dict, limit: int = 50) -> List[dict]:
-        return list(self.col_events.find(q).sort("timestamp",-1).limit(limit))
+    def count_events(self, q: dict) -> int:
+        return self.col_events.count_documents(q)
 
-    def query_iocs(self, q: dict, limit: int = 100) -> List[dict]:
-        return list(self.col_iocs.find(q).sort("timestamp",-1).limit(limit))
+    def query_events(self, q: dict, skip: int = 0, limit: int = 50) -> List[dict]:
+        return list(self.col_events.find(q).sort("event_id", 1).skip(skip).limit(limit))
+
+    def count_iocs(self, q: dict) -> int:
+        return self.col_iocs.count_documents(q)
+
+    def query_iocs(self, q: dict, skip: int = 0, limit: int = 100) -> List[dict]:
+        return list(self.col_iocs.find(q).sort("timestamp",-1).skip(skip).limit(limit))
 
     def tag_event(self, event_uuid: str, tag: str, add: bool=True, local: bool=True) -> dict:
         if not tag: return {"ok": False, "error": "tag is required"}

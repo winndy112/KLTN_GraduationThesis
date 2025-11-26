@@ -1,0 +1,20 @@
+[Unit]
+Description=Sensor Status Agent (heartbeat + status loop)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/sensor1/sensor_status_agent.py
+Restart=always
+RestartSec=5
+User=root
+ExecStopPost=/usr/bin/curl -s -X PUT \
+  -H "X-API-Key: K1-very-secret" \
+  -H "Content-Type: application/json" \
+  -d '{"sensor_id":"sensor-1","status":"inactive"}' \
+   "http://172.16.159.131:8000/api/v1/sensors/status"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
