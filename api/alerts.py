@@ -44,95 +44,62 @@ def _to_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
     return d
 def _parse_filter_expression(filter_expr: str) -> Dict[str, Any]:
     """
-    Parse advanced filter expressions like:
-    - field=value
-    - field!=value
-    - field>value
-    - field<value
-    - field contains value
-    
-    Returns MongoDB query conditions
+    Parse expressions such as:
+      msg contains "ICMP echo"
+      priority>2 action=block
+    into MongoDB-compatible query dictionaries.
     """
-    conditions = []
-    
-    # Split by spaces but preserve quoted strings
     import re
-    parts = re.findall(r'(?:[^\s"]|"(?:\\.|[^"])*")+', filter_expr.strip())
-    
-    for part in parts:
-        part = part.strip()
-        if not part:
-            continue
-            
-        # Try to match operators
-        if ' contains ' in part.lower():
-            field, value = part.split(' contains ', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            conditions.append({field: {"$regex": value, "$options": "i"}})
-        elif '!=' in part:
-            field, value = part.split('!=', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            # Try to convert to number if possible
-            try:
-                value = float(value) if '.' in value else int(value)
-            except ValueError:
-                pass
-            conditions.append({field: {"$ne": value}})
-        elif '>=' in part:
-            field, value = part.split('>=', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            try:
-                value = float(value) if '.' in value else int(value)
-            except ValueError:
-                pass
-            conditions.append({field: {"$gte": value}})
-        elif '<=' in part:
-            field, value = part.split('<=', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            try:
-                value = float(value) if '.' in value else int(value)
-            except ValueError:
-                pass
-            conditions.append({field: {"$lte": value}})
-        elif '>' in part:
-            field, value = part.split('>', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            try:
-                value = float(value) if '.' in value else int(value)
-            except ValueError:
-                pass
-            conditions.append({field: {"$gt": value}})
-        elif '<' in part:
-            field, value = part.split('<', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            try:
-                value = float(value) if '.' in value else int(value)
-            except ValueError:
-                pass
-            conditions.append({field: {"$lt": value}})
-        elif '=' in part:
-            field, value = part.split('=', 1)
-            field = field.strip()
-            value = value.strip().strip('"')
-            # Try to convert to number if possible
-            try:
-                value = float(value) if '.' in value else int(value)
-            except ValueError:
-                pass
-            conditions.append({field: value})
-    
-    if len(conditions) == 0:
+
+    token_pattern = re.compile(
+        r'(?P<field>[A-Za-z0-9_.]+)\s*'
+        r'(?P<op>!=|>=|<=|>|<|=|contains)\s*'
+        r'(?P<value>"[^"]+"|\'[^\']+\'|\S+)',
+        re.IGNORECASE,
+    )
+
+    conditions = []
+    for match in token_pattern.finditer(filter_expr):
+        field = match.group("field")
+        op = match.group("op").lower()
+        raw_value = match.group("value").strip()
+
+        if (raw_value.startswith('"') and raw_value.endswith('"')) or (
+            raw_value.startswith("'") and raw_value.endswith("'")
+        ):
+            value = raw_value[1:-1]
+        else:
+            value = raw_value
+
+        # Attempt numeric conversion when appropriate
+        try:
+            if "." in value:
+                converted: Any = float(value)
+            else:
+                converted = int(value)
+        except ValueError:
+            converted = value
+
+        if op == "contains":
+            conditions.append({field: {"$regex": re.escape(value), "$options": "i"}})
+        elif op == "=":
+            conditions.append({field: converted})
+        elif op == "!=":
+            conditions.append({field: {"$ne": converted}})
+        elif op == ">":
+            conditions.append({field: {"$gt": converted}})
+        elif op == "<":
+            conditions.append({field: {"$lt": converted}})
+        elif op == ">=":
+            conditions.append({field: {"$gte": converted}})
+        elif op == "<=":
+            conditions.append({field: {"$lte": converted}})
+
+    if not conditions:
         return {}
-    elif len(conditions) == 1:
+    if len(conditions) == 1:
         return conditions[0]
-    else:
-        return {"$and": conditions}
+    return {"$and": conditions}
 
 
 @router.get("/recent", response_model=Dict[str, Any])
