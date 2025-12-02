@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Header, Query, Body
-from app.models.alert_models import Alert
+from app.models.alert_models import Alert, ProcessorAlert
+from app.services.alert_service import save_processor_alert
 from datetime import datetime, timedelta
 from typing import Optional, List, Any, Dict, Union
 from bson import ObjectId
@@ -32,6 +33,32 @@ async def push_flex(
         return {"ok": True, "inserted": len(res.inserted_ids)}
     except PyMongoError as e:
         raise HTTPException(status_code=500, detail=f"DB error: {e}")
+
+@router.post("/processor")
+async def push_processor_alert(
+    alert: Union[ProcessorAlert, List[ProcessorAlert]] = Body(...),
+    x_api_key: str = Header(None)
+):
+    alerts = alert if isinstance(alert, list) else [alert]
+    if not alerts:
+        return {"ok": True, "inserted": 0}
+
+    # Verify API Key (using the first alert's sensor_id)
+    sid = alerts[0].sensor_id
+    _check_key(sid, x_api_key)
+
+    inserted_ids = []
+    for a in alerts:
+        try:
+            inserted_id = await save_processor_alert(a)
+            inserted_ids.append(inserted_id)
+        except Exception as e:
+            # Log error but continue processing other alerts? 
+            # Or fail the whole batch? 
+            # For now, let's raise an exception to be safe.
+            raise HTTPException(status_code=500, detail=f"Error saving alert: {e}")
+
+    return {"ok": True, "inserted": len(inserted_ids), "ids": inserted_ids}
 
 
 

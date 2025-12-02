@@ -1,0 +1,272 @@
+[
+  {
+    "id": "ZEEK_DNS_SUSPICIOUS_TLD",
+    "name": "Suspicious DNS TLD (.ru/.xyz)",
+    "log_type": "dns",
+    "rule_type": "pattern",
+    "conditions": [
+      {
+        "field": "query",
+        "op": "endswith_any",
+        "value": [
+          ".ru",
+          ".xyz"
+        ]
+      }
+    ],
+    "severity": "high",
+    "category": "dns",
+    "mitre_techniques": [
+      "T1071.004"
+    ],
+    "tags": [
+      "zeek",
+      "dns",
+      "suspicious_tld"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_CONN_EXTERNAL_RDP",
+    "name": "RDP connection to external IP",
+    "log_type": "conn",
+    "rule_type": "ioc",
+    "conditions": [
+      {
+        "field": "id.resp_p",
+        "op": "equals",
+        "value": 3389
+      },
+      {
+        "field": "id.resp_h",
+        "op": "not_in_cidr",
+        "value": [
+          "172.16.0.0/12"
+        ]
+      }
+    ],
+    "severity": "medium",
+    "category": "rdp",
+    "mitre_techniques": [
+      "T1021.001"
+    ],
+    "tags": [
+      "zeek",
+      "conn",
+      "rdp"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_DNS_TXT_EXTERNAL",
+    "name": "DNS TXT query to external server",
+    "log_type": "dns",
+    "rule_type": "pattern",
+    "conditions": [
+      {
+        "field": "qtype_name",
+        "op": "equals",
+        "value": "TXT"
+      },
+      {
+        "field": "id.resp_h",
+        "op": "not_in_cidr",
+        "value": [
+          "172.16.0.0/12"
+        ]
+      }
+    ],
+    "severity": "medium",
+    "category": "dns",
+    "mitre_techniques": [
+      "T1071.004"
+    ],
+    "tags": [
+      "zeek",
+      "dns",
+      "txt",
+      "tunneling"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_SSL_WEAK_OR_INVALID_CERT",
+    "name": "TLS connection with invalid or weak configuration",
+    "log_type": "ssl",
+    "rule_type": "pattern",
+    "conditions": [
+      {
+        "field": "version",
+        "op": "in",
+        "value": [
+          "SSLv3",
+          "TLSv1"
+        ]
+      }
+    ],
+    "severity": "medium",
+    "category": "tls",
+    "mitre_techniques": [
+      "T1552"
+    ],
+    "tags": [
+      "zeek",
+      "ssl",
+      "weak_tls"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_HTTP_SENSITIVE_PATH",
+    "name": "HTTP request to sensitive admin path",
+    "log_type": "http",
+    "rule_type": "pattern",
+    "conditions": [
+      {
+        "field": "uri",
+        "op": "contains",
+        "value": "/wp-admin"
+      }
+    ],
+    "severity": "medium",
+    "category": "web",
+    "mitre_techniques": [
+      "T1190"
+    ],
+    "tags": [
+      "zeek",
+      "http",
+      "admin_path"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_HTTP_PHPADMIN_SCAN",
+    "name": "HTTP request to phpMyAdmin",
+    "log_type": "http",
+    "rule_type": "pattern",
+    "conditions": [
+      {
+        "field": "uri",
+        "op": "contains",
+        "value": "phpmyadmin"
+      }
+    ],
+    "severity": "medium",
+    "category": "web",
+    "mitre_techniques": [
+      "T1190"
+    ],
+    "tags": [
+      "zeek",
+      "http",
+      "phpmyadmin"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_HTTP_LARGE_POST_EXTERNAL",
+    "name": "Large HTTP POST to external host",
+    "log_type": "http",
+    "rule_type": "threshold",
+    "conditions": [
+      {
+        "field": "method",
+        "op": "equals",
+        "value": "POST"
+      },
+      {
+        "field": "request_body_len",
+        "op": "gt",
+        "value": 1000000
+      },
+      {
+        "field": "id.resp_h",
+        "op": "not_in_cidr",
+        "value": [
+          "172.16.0.0/12"
+        ]
+      }
+    ],
+    "severity": "high",
+    "category": "exfiltration",
+    "mitre_techniques": [
+      "T1041"
+    ],
+    "tags": [
+      "zeek",
+      "http",
+      "large_post"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_CONN_SMB_EXTERNAL",
+    "name": "SMB connection to external IP",
+    "log_type": "conn",
+    "rule_type": "ioc",
+    "conditions": [
+      {
+        "field": "id.resp_p",
+        "op": "equals",
+        "value": 445
+      },
+      {
+        "field": "id.resp_h",
+        "op": "not_in_cidr",
+        "value": [
+          "172.16.0.0/12"
+        ]
+      }
+    ],
+    "severity": "high",
+    "category": "smb",
+    "mitre_techniques": [
+      "T1021.002"
+    ],
+    "tags": [
+      "zeek",
+      "conn",
+      "smb"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "ZEEK_CONN_SSH_INBOUND_EXTERNAL",
+    "name": "Inbound SSH from external to internal",
+    "log_type": "conn",
+    "rule_type": "ioc",
+    "conditions": [
+      {
+        "field": "id.resp_p",
+        "op": "equals",
+        "value": 22
+      },
+      {
+        "field": "id.orig_h",
+        "op": "not_in_cidr",
+        "value": [
+          "172.16.0.0/12"
+        ]
+      },
+      {
+        "field": "id.resp_h",
+        "op": "in_cidr",
+        "value": [
+          "172.16.0.0/12"
+        ]
+      }
+    ],
+    "severity": "high",
+    "category": "ssh",
+    "mitre_techniques": [
+      "T1021.004"
+    ],
+    "tags": [
+      "zeek",
+      "conn",
+      "ssh"
+    ],
+    "enabled": true
+  }
+]
